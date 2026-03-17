@@ -1,9 +1,9 @@
 export interface Member {
   id: number
   name: string
-  class_no: number        // 반 (1~8)
+  class_no: number
   email: string
-  is_deceased: boolean    // 별세여부
+  is_deceased: boolean
   mobile: string
   company: string
   home_phone: string
@@ -15,7 +15,7 @@ export interface Member {
 
 export interface Album {
   id: number
-  category: 'teacher' | 'event' | 'class' | 'yearend'
+  category: 'basic' | 'teacher' | 'class1' | 'class2' | 'class3' | 'class4' | 'class5' | 'class6' | 'class7' | 'class8' | 'event' | 'yearend'
   class_no?: number
   year?: number
   title: string
