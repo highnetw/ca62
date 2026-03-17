@@ -2,20 +2,22 @@ export interface Member {
   id: number
   name: string
   class_no: number        // 반 (1~8)
+  email: string
+  is_deceased: boolean    // 별세여부
   mobile: string
   company: string
+  home_phone: string
   address: string
   photo_url: string
-  is_alive: boolean       // 생존여부
-  created_at?: string
   updated_at?: string
+  created_at?: string
 }
 
 export interface Album {
   id: number
   category: 'teacher' | 'event' | 'class' | 'yearend'
-  class_no?: number       // 반별 사진일 때
-  year?: number           // 모임행사 연도
+  class_no?: number
+  year?: number
   title: string
   cover_url?: string
   created_at?: string
