@@ -51,3 +51,9 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 @keyframes shake   { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
 
 .fade-in { animation: fadeIn 0.3s ease both; }
+/* 라이트박스 전체화면 */
+body > div[style*="100vw"] {
+  max-width: none !important;
+  left: 0 !important;
+  margin: 0 !important;
+}
