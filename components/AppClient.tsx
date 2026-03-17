@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 import { Member, Album, AlbumPhoto } from '@/lib/types'
 import PinModal from '@/components/PinModal'
@@ -47,7 +48,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   class7:  '7️⃣ 7반',
   class8:  '8️⃣ 8반',
   event:   '🎊 행사',
-  yearend: '🎉 모임',
+  yearend: '🎉 동기회행사',
 }
 
 const ALBUM_CATEGORIES = ['basic','teacher','class1','class2','class3','class4','class5','class6','class7','class8','event'] as const
@@ -149,7 +150,10 @@ export default function AppClient() {
     <div style={{ paddingBottom: 100 }}>
       <div style={header}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-serif)', letterSpacing: 2 }}>중앙고 62회</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img src="/mark-choongang.png" alt="중앙고" style={{ width: 32, height: 32, objectFit: 'contain', opacity: 0.9 }} />
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-serif)', letterSpacing: 2 }}>중앙고 62회</div>
+          </div>
           <div>
             {isAdmin
               ? <span style={{ fontSize: 12, color: 'var(--gold)', padding: '5px 12px', border: '1px solid var(--gold-dim)', borderRadius: 8 }}>👑 관리자</span>
@@ -166,7 +170,7 @@ export default function AppClient() {
             { label: '전체 동기', value: `${members.length}명`, icon: '👥', page: 'members' },
             { label: '생존 회원', value: `${aliveMembers.length}명`, icon: '🤝', page: 'members' },
             { label: '앨범', value: `${albums.length}개`, icon: '📸', page: 'album' },
-            { label: '모임', value: `${albums.filter(a => a.category === 'yearend').length}회`, icon: '🎉', page: 'yearend' },
+            { label: '동기회행사', value: `${albums.filter(a => a.category === 'yearend').length}회`, icon: '🎉', page: 'yearend' },
           ].map(({ label: l, value, icon, page: p }) => (
             <div key={l} onClick={() => nav(p)} style={{ ...card, textAlign: 'center', marginBottom: 0, cursor: 'pointer' }}>
               <div style={{ fontSize: 26 }}>{icon}</div>
@@ -436,19 +440,33 @@ export default function AppClient() {
   // ── 앨범 ──────────────────────────────────────────────────────────────
   // ══════════════════════════════════════════════════════════════════════
   const AlbumPage = () => {
+    const [filterCat, setFilterCat] = useState<string>('all')
+    const displayCats = filterCat === 'all' ? ALBUM_CATEGORIES : [filterCat as typeof ALBUM_CATEGORIES[number]]
     return (
       <div style={{ paddingBottom: 100 }}>
         <div style={header}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-serif)' }}>앨범</div>
             {isAdmin && (
               <button onClick={() => setEditAlbum({ category: 'basic', title: '' })}
                 style={{ ...btn(), fontSize: 12 }}>+ 앨범 추가</button>
             )}
           </div>
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+            <button onClick={() => setFilterCat('all')}
+              style={{ ...btn(filterCat === 'all' ? 'gold' : 'outline'), padding: '4px 12px', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              전체
+            </button>
+            {ALBUM_CATEGORIES.map(c => (
+              <button key={c} onClick={() => setFilterCat(c)}
+                style={{ ...btn(filterCat === c ? 'gold' : 'outline'), padding: '4px 10px', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {CATEGORY_LABELS[c]}
+              </button>
+            ))}
+          </div>
         </div>
         <div style={{ padding: '16px 20px 0' }}>
-          {ALBUM_CATEGORIES.map(cat => {
+          {displayCats.map(cat => {
             const catAlbums = albums.filter(a => a.category === cat)
             if (!catAlbums.length && !isAdmin) return null
             return (
@@ -522,7 +540,7 @@ export default function AppClient() {
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // ── 모임 ────────────────────────────────────────────────────────────
+  // ── 송년회 ────────────────────────────────────────────────────────────
   // ══════════════════════════════════════════════════════════════════════
   const YearendPage = () => {
     const yearendAlbums = albums.filter(a => a.category === 'yearend').sort((a, b) => (b.year || 0) - (a.year || 0))
@@ -530,7 +548,7 @@ export default function AppClient() {
       <div style={{ paddingBottom: 100 }}>
         <div style={header}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-serif)' }}>모임</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-serif)' }}>동기회행사</div>
             {isAdmin && (
               <button onClick={() => setEditAlbum({ category: 'yearend', title: '', year: new Date().getFullYear() })}
                 style={{ ...btn(), fontSize: 12 }}>+ 추가</button>
@@ -551,14 +569,14 @@ export default function AppClient() {
                     : <span style={{ fontSize: 28 }}>🎉</span>}
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{a.year}년 모임</div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>{a.year}년 송년회</div>
                   <div style={{ fontSize: 13, color: 'var(--gold)', marginTop: 2 }}>{a.title}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>{(a.photos || []).length}장</div>
                 </div>
               </div>
             </div>
           ))}
-          {!yearendAlbums.length && <div style={{ textAlign: 'center', color: '#445', padding: 40 }}>모임 사진이 없습니다</div>}
+          {!yearendAlbums.length && <div style={{ textAlign: 'center', color: '#445', padding: 40 }}>동기회행사 사진이 없습니다</div>}
         </div>
       </div>
     )
@@ -699,20 +717,27 @@ export default function AppClient() {
       {editAlbum  && <AlbumEditModal />}
       {pinModal   && <PinModal type={pinModal.type} title={pinModal.title} onSuccess={pinModal.onSuccess} onCancel={() => setPinModal(null)} />}
 
-      {lightbox && (
+      {lightbox && typeof document !== 'undefined' && createPortal(
         <div onClick={() => setLightbox(null)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.97)',
+          position: 'fixed', top: 0, left: 0,
+          width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.97)',
           zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: '100vw', height: '100vh', left: 0, top: 0,
         }}>
-          <img src={lightbox} alt="" style={{ width: '100vw', height: '100vh', objectFit: 'contain' }} />
-          <button onClick={() => setLightbox(null)} style={{
+          <img src={lightbox} alt="" style={{
+            maxWidth: '100vw', maxHeight: '100vh',
+            width: 'auto', height: 'auto',
+            objectFit: 'contain',
+          }} />
+          <button onClick={e => { e.stopPropagation(); setLightbox(null) }} style={{
             position: 'fixed', top: 20, right: 20,
             background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.3)',
             borderRadius: '50%', width: 44, height: 44, color: '#fff', fontSize: 22,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 100000,
           }}>✕</button>
-        </div>
+        </div>,
+        document.body
       )}
 
       <BottomNav current={activeNav} onChange={nav} />
