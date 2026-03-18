@@ -21,9 +21,9 @@ const ALBUM_CATS = ['basic','teacher','class1','class2','class3','class4','class
 // ── 스플래시 ──────────────────────────────────────────────────────────────────
 function Splash({ onDone }: { onDone: ()=>void }) {
   const [fade, setFade] = useState(false)
-  useEffect(() => { const t1=setTimeout(()=>setFade(true),5400); const t2=setTimeout(onDone,7200); return ()=>{clearTimeout(t1);clearTimeout(t2)} }, [onDone])
+  useEffect(() => { const t1=setTimeout(()=>setFade(true),5400); const t2=setTimeout(onDone,6000); return ()=>{clearTimeout(t1);clearTimeout(t2)} }, [onDone])
   return (
-    <div style={{ position:'fixed', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', opacity:fade?0:1, transition:'opacity 0.6s ease', zIndex:9999, overflow:'hidden' }}>
+    <div style={{ position:'fixed', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', opacity:fade?0:1, transition:'opacity 0.8s ease', zIndex:9999, overflow:'hidden' }}>
       <img src="/building.png" alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }} />
       <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(8,13,26,0.15) 0%, rgba(8,13,26,0.30) 100%)' }} />
       <div style={{ position:'relative', display:'flex', flexDirection:'column', alignItems:'center' }}>
@@ -486,8 +486,12 @@ export default function AppClient() {
 
   if (phase === 'splash') return <Splash onDone={() => setPhase('pin')} />
   if (phase === 'pin') return (
-    <div style={{ background:'var(--bg)', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <PinModal type="entry" title="중앙고 62회" onSuccess={() => setPhase('app')} onCancel={() => {}} />
+    <div style={{ position:'fixed', inset:0, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+      <img src="/building.png" alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }} />
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(180deg, rgba(8,13,26,0.15) 0%, rgba(8,13,26,0.30) 100%)' }} />
+      <div style={{ position:'relative' }}>
+        <PinModal type="entry" title="중앙고 62회" onSuccess={() => setPhase('app')} onCancel={() => {}} />
+      </div>
     </div>
   )
 
