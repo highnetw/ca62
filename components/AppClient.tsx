@@ -58,31 +58,45 @@ type AlbumCategory = typeof ALBUM_CATEGORIES[number] | 'yearend'
 function Splash({ onDone }: { onDone: () => void }) {
   const [fade, setFade] = useState(false)
   useEffect(() => {
-    const t1 = setTimeout(() => setFade(true), 1800)
-    const t2 = setTimeout(onDone, 2400)
+    const t1 = setTimeout(() => setFade(true), 5400)
+    const t2 = setTimeout(onDone, 7200)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [onDone])
 
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'linear-gradient(135deg, #080d1a 0%, #0d1535 50%, #111a3e 100%)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       opacity: fade ? 0 : 1, transition: 'opacity 0.6s ease', zIndex: 9999,
+      overflow: 'hidden',
     }}>
+      {/* 건물 배경 꽉 채우기 */}
+      <img src="/building.png" alt="" style={{
+        position: 'absolute', inset: 0,
+        width: '100%', height: '100%',
+        objectFit: 'cover', objectPosition: 'center top',
+      }} />
+      {/* 살짝 어둡게 오버레이 */}
       <div style={{
-        width: 160, height: 160, borderRadius: '50%',
-        border: '3px solid var(--gold)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'radial-gradient(circle, #1a2a5e 0%, #080d1a 100%)',
-        animation: 'pulse 2s infinite', marginBottom: 28,
-        overflow: 'hidden', padding: 16, boxSizing: 'border-box',
-      }}>
-        <img src="/mark-choongang.png" alt="중앙고 마크"
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(180deg, rgba(8,13,26,0.35) 0%, rgba(8,13,26,0.55) 100%)',
+      }} />
+      {/* 콘텐츠 */}
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{
+          width: 140, height: 140, borderRadius: '50%',
+          border: '3px solid var(--gold)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(8,13,26,0.6)',
+          animation: 'pulse 2s infinite', marginBottom: 24,
+          overflow: 'hidden', padding: 14, boxSizing: 'border-box',
+        }}>
+          <img src="/mark-choongang.png" alt="중앙고 마크"
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        </div>
+        <div style={{ fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: 4, fontFamily: 'var(--font-serif)', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>중앙고 62회</div>
+        <div style={{ fontSize: 16, color: 'var(--gold)', letterSpacing: 4, marginTop: 8, opacity: 0.95, textShadow: '0 2px 6px rgba(0,0,0,0.8)' }}>동기회</div>
       </div>
-      <div style={{ fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: 4, fontFamily: 'var(--font-serif)' }}>중앙고 62회</div>
-      <div style={{ fontSize: 16, color: 'var(--gold)', letterSpacing: 4, marginTop: 8, opacity: 0.9 }}>동기회</div>
     </div>
   )
 }
