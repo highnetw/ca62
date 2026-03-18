@@ -535,6 +535,24 @@ export default function AppClient() {
                   onClick={() => setLightbox(p.url)}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }}
                 />
+                {isAdmin && (
+                  <button
+                    onClick={async e => {
+                      e.stopPropagation()
+                      if (!confirm('이 사진을 삭제하시겠습니까?')) return
+                      await supabase.from('62-photos').delete().eq('id', p.id)
+                      await loadAlbums()
+                      const updated = albums.find(x => x.id === a.id)
+                      if (updated) setSelAlbum(updated)
+                    }}
+                    style={{
+                      position: 'absolute', top: 4, right: 4,
+                      background: 'rgba(192,57,43,0.85)', border: 'none',
+                      borderRadius: '50%', width: 24, height: 24,
+                      color: '#fff', fontSize: 13, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>✕</button>
+                )}
               </div>
             ))}
           </div>
