@@ -257,9 +257,9 @@ export default function AppClient() {
           </div>
         </div>
         <input
-          defaultValue={searchQ}
+          type="search"
+          autoComplete="off"
           onChange={e => setSearchQ(e.target.value)}
-          onCompositionEnd={e => setSearchQ((e.target as HTMLInputElement).value)}
           placeholder="이름 · 반 · 직장 검색"
           style={{ ...inputStyle, marginBottom: 10 }}
         />
