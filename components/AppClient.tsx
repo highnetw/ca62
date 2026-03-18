@@ -256,8 +256,13 @@ export default function AppClient() {
               style={{ ...btn('outline'), fontSize: 12 }}>{viewMode === 'all' ? '반별보기' : '전체보기'}</button>
           </div>
         </div>
-        <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
-          placeholder="이름 · 반 · 직장 검색" style={{ ...inputStyle, marginBottom: 10 }} />
+        <input
+          defaultValue={searchQ}
+          onChange={e => setSearchQ(e.target.value)}
+          onCompositionEnd={e => setSearchQ((e.target as HTMLInputElement).value)}
+          placeholder="이름 · 반 · 직장 검색"
+          style={{ ...inputStyle, marginBottom: 10 }}
+        />
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
           {['all', '1','2','3','4','5','6','7','8'].map(c => (
             <button key={c} onClick={() => setFilterClass(c)}
