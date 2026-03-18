@@ -527,8 +527,15 @@ export default function AppClient() {
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
             {(a.photos || []).map(p => (
-              <img key={p.id} src={p.url} alt="" onClick={() => setLightbox(p.url)}
-                style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 6, cursor: 'pointer' }} />
+              <div key={p.id} style={{ position: 'relative', aspectRatio: '1', background: 'var(--navy-bg)', borderRadius: 6, overflow: 'hidden' }}>
+                <img
+                  src={p.url}
+                  alt=""
+                  loading="lazy"
+                  onClick={() => setLightbox(p.url)}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', display: 'block' }}
+                />
+              </div>
             ))}
           </div>
           {!(a.photos || []).length && (
