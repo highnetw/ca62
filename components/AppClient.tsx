@@ -145,6 +145,16 @@ export default function AppClient() {
     setPinModal({ type, title, onSuccess: () => { setPinModal(null); onSuccess() } })
   }
 
+  const doBackup = () => {
+    const data = JSON.stringify({ members, albums }, null, 2)
+    const blob = new Blob([data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `중앙62_백업_${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+  }
+
   const nav = (p: string) => { setPage(p); setSelMember(null); setSelAlbum(null) }
 
   const filteredMembers = members.filter(m => {
@@ -210,6 +220,12 @@ export default function AppClient() {
             })}
           </div>
         </div>
+
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <button onClick={doBackup} style={{ ...btn('outline'), flex: 1 }}>💾 백업</button>
+          </div>
+        )}
 
         {deceasedMembers.length > 0 && (
           <div style={{ ...card, borderColor: '#55335533' }}>
