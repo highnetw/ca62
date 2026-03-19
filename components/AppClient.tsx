@@ -135,19 +135,15 @@ function MembersPage({ members, onSelect }: { members:Member[], onSelect:(m:Memb
         </div>
       </div>
       <div style={{ padding:'16px 20px 0' }}>
-        {vm==='all' ? (
+        {fc==='deceased' ? (
           <>
-            {fc==='deceased' ? (
-              <>
-                <div style={{ fontSize:12, color:'#776', marginBottom:10 }}>🕯 별세하신 동기 {dead.length}명</div>
-                {dead.map(m => <MCard key={m.id} m={m} onSelect={onSelect} deceased />)}
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:10 }}>{alive.length}명</div>
-                {alive.map(m => <MCard key={m.id} m={m} onSelect={onSelect} />)}
-              </>
-            )}
+            <div style={{ fontSize:12, color:'#776', marginBottom:10 }}>🕯 별세하신 동기 {dead.length}명</div>
+            {dead.map(m => <MCard key={m.id} m={m} onSelect={onSelect} deceased />)}
+          </>
+        ) : vm==='all' ? (
+          <>
+            <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:10 }}>{alive.length}명</div>
+            {alive.map(m => <MCard key={m.id} m={m} onSelect={onSelect} />)}
           </>
         ) : (
           [1,2,3,4,5,6,7,8].map(c => {
