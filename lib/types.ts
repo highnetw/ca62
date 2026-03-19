@@ -9,6 +9,7 @@ export interface Member {
   home_phone: string
   address: string
   photo_url: string
+  recent_photo_url: string
   updated_at?: string
   created_at?: string
 }
