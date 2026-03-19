@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: '중앙 62회',
-  description: '서울 중앙고등학교 62회 동기회',
+  title: '중앙고 62회',
+  description: '중앙고등학교 62회 동기회',
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
@@ -14,7 +14,6 @@ export const metadata: Metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
