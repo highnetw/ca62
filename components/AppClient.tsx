@@ -1,6 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Member, Album } from '@/lib/types'
 import PinModal from '@/components/PinModal'
@@ -21,7 +20,7 @@ const ALBUM_CATS = ['basic','teacher','class1','class2','class3','class4','class
 // ── 스플래시 ──────────────────────────────────────────────────────────────────
 function Splash({ onDone }: { onDone: ()=>void }) {
   const [fade, setFade] = useState(false)
-  useEffect(() => { const t1=setTimeout(()=>setFade(true),5400); const t2=setTimeout(onDone,6000); return ()=>{clearTimeout(t1);clearTimeout(t2)} }, [onDone])
+  useEffect(() => { const t1=setTimeout(()=>setFade(true),2700); const t2=setTimeout(onDone,3000); return ()=>{clearTimeout(t1);clearTimeout(t2)} }, [onDone])
   return (
     <div style={{ position:'fixed', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', opacity:fade?0:1, transition:'opacity 0.8s ease', zIndex:9999, overflow:'hidden' }}>
       <img src="/building.png" alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }} />
@@ -54,40 +53,51 @@ function HomePage({ members, albums, isAdmin, onNav, onAdmin, onBackup }: { memb
         </div>
       </div>
       <div style={{ padding:'20px 20px 0' }}>
+        {/* 상단 카드: 동기명단(좌) + 앨범/행사(우) */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:20 }}>
-          {[
-            { label:'전체 동기', value:`${members.length}명`, icon:'👥', page:'members' },
-            { label:'생존 회원', value:`${alive.length}명`, icon:'🤝', page:'members' },
-            { label:'앨범', value:`${albums.filter(a=>a.category!=='yearend').length}개`, icon:'📸', page:'album' },
-            { label:'동기회행사', value:`${albums.filter(a=>a.category==='yearend').length}회`, icon:'🎉', page:'yearend' },
-          ].map(({ label:l, value, icon, page:p }) => (
-            <div key={l} onClick={()=>onNav(p)} style={{ ...card, textAlign:'center', marginBottom:0, cursor:'pointer' }}>
-              <div style={{ fontSize:26 }}>{icon}</div>
-              <div style={{ fontSize:22, fontWeight:900, color:'var(--gold)' }}>{value}</div>
-              <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>{l}</div>
+          <div onClick={()=>onNav('members')} style={{ ...card, textAlign:'center', marginBottom:0, cursor:'pointer' }}>
+            <div style={{ fontSize:26 }}>👥</div>
+            <div style={{ fontSize:22, fontWeight:900, color:'var(--gold)' }}>{alive.length}명</div>
+            <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>동기명단</div>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div onClick={()=>onNav('album')} style={{ ...card, textAlign:'center', marginBottom:0, cursor:'pointer', padding:12 }}>
+              <div style={{ fontSize:20 }}>📸</div>
+              <div style={{ fontSize:16, fontWeight:900, color:'var(--gold)' }}>{albums.filter(a=>a.category!=='yearend').length}개</div>
+              <div style={{ fontSize:10, color:'var(--text-dim)' }}>앨범</div>
             </div>
-          ))}
+            <div onClick={()=>onNav('yearend')} style={{ ...card, textAlign:'center', marginBottom:0, cursor:'pointer', padding:12 }}>
+              <div style={{ fontSize:20 }}>🎉</div>
+              <div style={{ fontSize:16, fontWeight:900, color:'var(--gold)' }}>{albums.filter(a=>a.category==='yearend').length}회</div>
+              <div style={{ fontSize:10, color:'var(--text-dim)' }}>동기회행사</div>
+            </div>
+          </div>
         </div>
+
+        {/* 반별 현황 + 별세 탭 */}
         <div style={card}>
           <div style={{ fontSize:12, color:'var(--gold)', letterSpacing:1, marginBottom:12 }}>📊 반별 현황</div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:8 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
             {[1,2,3,4,5,6,7,8].map(c => (
               <div key={c} onClick={()=>onNav('members')} style={{ textAlign:'center', cursor:'pointer', padding:'8px 4px', borderRadius:8, background:'var(--navy-bg)' }}>
                 <div style={{ fontSize:16, fontWeight:700, color:'var(--gold)' }}>{members.filter(m=>m.class_no===c).length}</div>
                 <div style={{ fontSize:10, color:'var(--text-dim)' }}>{c}반</div>
               </div>
             ))}
-          </div>
-        </div>
-        {isAdmin && <div style={{ marginTop:10, marginBottom:16 }}><button onClick={onBackup} style={{ ...btn('outline'), width:'100%' }}>💾 백업</button></div>}
-        {deceased.length > 0 && (
-          <div style={{ ...card, borderColor:'#55335533' }}>
-            <div style={{ fontSize:12, color:'#998', letterSpacing:1, marginBottom:8 }}>🕯 별세하신 동기</div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-              {deceased.map(m => <span key={m.id} style={{ fontSize:13, color:'#776', padding:'3px 10px', background:'#22203044', borderRadius:20 }}>{m.name}{m.class_no>0?` (${m.class_no}반)`:''}</span>)}
+            {/* 별세 탭 */}
+            <div style={{ textAlign:'center', padding:'8px 4px', borderRadius:8, background:'#22203044' }}>
+              <div style={{ fontSize:16, fontWeight:700, color:'#776' }}>{deceased.length}</div>
+              <div style={{ fontSize:10, color:'#776' }}>🕯 별세</div>
             </div>
           </div>
-        )}
+        </div>
+
+        {/* 전체 동기 - 우하단 작게 */}
+        <div style={{ textAlign:'right', marginTop:8, marginBottom:16 }}>
+          <span style={{ fontSize:12, color:'var(--text-dim)' }}>전체 동기 {members.length}명</span>
+        </div>
+
+        {isAdmin && <div style={{ marginBottom:16 }}><button onClick={onBackup} style={{ ...btn('outline'), width:'100%' }}>💾 백업</button></div>}
       </div>
     </div>
   )
@@ -101,11 +111,12 @@ function MembersPage({ members, onSelect }: { members:Member[], onSelect:(m:Memb
 
   const filtered = members.filter(m => {
     const sq = q.toLowerCase()
-    return (!sq || m.name.includes(sq) || (m.company||'').includes(sq) || String(m.class_no).includes(sq))
-        && (fc==='all' || m.class_no===Number(fc))
+    const matchQ = !sq || m.name.includes(sq) || (m.company||'').includes(sq) || String(m.class_no).includes(sq)
+    const matchC = fc==='all' ? true : fc==='deceased' ? m.is_deceased : m.class_no===Number(fc)
+    return matchQ && matchC
   })
-  const alive = filtered.filter(m => !m.is_deceased)
-  const dead  = filtered.filter(m =>  m.is_deceased)
+  const alive = fc==='deceased' ? [] : filtered.filter(m => !m.is_deceased)
+  const dead  = filtered.filter(m => m.is_deceased)
 
   return (
     <div style={{ paddingBottom:100 }}>
@@ -116,9 +127,9 @@ function MembersPage({ members, onSelect }: { members:Member[], onSelect:(m:Memb
         </div>
         <input type="text" value={q} onChange={e=>setQ(e.target.value)} placeholder="이름 · 반 · 직장 검색" style={{ ...inp, marginBottom:10 }} autoComplete="off" />
         <div style={{ display:'flex', gap:6, overflowX:'auto', paddingBottom:2 }}>
-          {['all','1','2','3','4','5','6','7','8'].map(c => (
+          {['all','1','2','3','4','5','6','7','8','deceased'].map(c => (
             <button key={c} onClick={()=>setFc(c)} style={{ ...btn(fc===c?'gold':'outline'), padding:'4px 12px', fontSize:12, whiteSpace:'nowrap', flexShrink:0 }}>
-              {c==='all'?'전체':`${c}반`}
+              {c==='all'?'전체':c==='deceased'?'🕯 별세':`${c}반`}
             </button>
           ))}
         </div>
@@ -126,9 +137,17 @@ function MembersPage({ members, onSelect }: { members:Member[], onSelect:(m:Memb
       <div style={{ padding:'16px 20px 0' }}>
         {vm==='all' ? (
           <>
-            <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:10 }}>{alive.length}명 (별세 {dead.length}명 제외)</div>
-            {alive.map(m => <MCard key={m.id} m={m} onSelect={onSelect} />)}
-            {dead.length>0 && <div style={{ marginTop:20 }}><div style={{ fontSize:12, color:'#776', marginBottom:8 }}>🕯 별세</div>{dead.map(m=><MCard key={m.id} m={m} onSelect={onSelect} deceased />)}</div>}
+            {fc==='deceased' ? (
+              <>
+                <div style={{ fontSize:12, color:'#776', marginBottom:10 }}>🕯 별세하신 동기 {dead.length}명</div>
+                {dead.map(m => <MCard key={m.id} m={m} onSelect={onSelect} deceased />)}
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:12, color:'var(--text-dim)', marginBottom:10 }}>{alive.length}명</div>
+                {alive.map(m => <MCard key={m.id} m={m} onSelect={onSelect} />)}
+              </>
+            )}
           </>
         ) : (
           [1,2,3,4,5,6,7,8].map(c => {
@@ -510,12 +529,20 @@ export default function AppClient() {
       {editAlbum  && <AlbumEditModal  album={editAlbum}   onSave={saveAlbum}  onClose={()=>setEditAlbum(null)} />}
       {pinModal   && <PinModal type={pinModal.type} title={pinModal.title} onSuccess={pinModal.onSuccess} onCancel={()=>setPinModal(null)} />}
 
-      {lightbox && typeof document !== 'undefined' && createPortal(
-        <div onClick={()=>setLightbox(null)} style={{ position:'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.97)', zIndex:99999, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <img src={lightbox} alt="" style={{ maxWidth:'100vw', maxHeight:'100vh', width:'auto', height:'auto', objectFit:'contain' }} />
-          <button onClick={e=>{e.stopPropagation();setLightbox(null)}} style={{ position:'fixed', top:20, right:20, background:'rgba(0,0,0,0.6)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'50%', width:44, height:44, color:'#fff', fontSize:22, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100000 }}>✕</button>
-        </div>,
-        document.body
+      {lightbox && (
+        <div style={{ position:'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.97)', zIndex:99999, display:'flex', alignItems:'center', justifyContent:'center' }}
+          onClick={()=>setLightbox(null)}>
+          <img
+            src={lightbox}
+            alt="사진"
+            draggable={false}
+            onContextMenu={e=>e.preventDefault()}
+            style={{ maxWidth:'100vw', maxHeight:'100vh', objectFit:'contain', display:'block' }}
+            onClick={e=>e.stopPropagation()}
+          />
+          <button onClick={e=>{e.stopPropagation();setLightbox(null)}}
+            style={{ position:'fixed', top:20, right:20, background:'rgba(0,0,0,0.6)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'50%', width:44, height:44, color:'#fff', fontSize:22, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+        </div>
       )}
 
       <BottomNav current={activeNav} onChange={nav} />
