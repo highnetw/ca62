@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { id: 'members', label: '회원', icon: '👥' },
   { id: 'album',   label: '앨범', icon: '📸' },
   { id: 'yearend', label: '모임', icon: '🎉' },
+  { id: 'music',   label: '교가', icon: '🎵' },
 ]
 
 interface Props {
