@@ -164,7 +164,6 @@ function MCard({ m, onSelect, deceased }: { m: Member, onSelect: (m: Member) => 
   )
 }
 
-// ── 회원 상세 ─────────────────────────────────────────────────────────────────
 function MemberDetailPage({ m, isAdmin, onBack, onEdit, onLightbox }: { m: Member, isAdmin: boolean, onBack: () => void, onEdit: (m: Member) => void, onLightbox: (url: string) => void }) {
   const recentUrl = (m as any).recent_photo_url as string | undefined
   return (
@@ -176,9 +175,7 @@ function MemberDetailPage({ m, isAdmin, onBack, onEdit, onLightbox }: { m: Membe
         </div>
       </div>
       <div style={{ padding: 20 }}>
-        {/* 사진 영역 */}
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 24 }}>
-          {/* 졸업사진 */}
           <div style={{ textAlign: 'center' }}>
             <div onClick={() => m.photo_url && onLightbox(m.photo_url)}
               style={{ width: 90, height: 90, borderRadius: '50%', margin: '0 auto', background: 'var(--navy-bg)', border: '3px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700, color: 'var(--gold)', overflow: 'hidden', cursor: m.photo_url ? 'pointer' : 'default' }}>
@@ -186,7 +183,6 @@ function MemberDetailPage({ m, isAdmin, onBack, onEdit, onLightbox }: { m: Membe
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 5 }}>졸업사진</div>
           </div>
-          {/* 최근사진 - 있을 때만 */}
           {recentUrl && (
             <div style={{ textAlign: 'center' }}>
               <div onClick={() => onLightbox(recentUrl)}
@@ -197,7 +193,6 @@ function MemberDetailPage({ m, isAdmin, onBack, onEdit, onLightbox }: { m: Membe
             </div>
           )}
         </div>
-        {/* 이름 + 반 */}
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div style={{ fontSize: 24, fontWeight: 900 }}>{m.name}</div>
           <div style={{ fontSize: 14, color: 'var(--gold)', marginTop: 4 }}>
@@ -223,7 +218,6 @@ function MemberDetailPage({ m, isAdmin, onBack, onEdit, onLightbox }: { m: Membe
   )
 }
 
-// ── 회원 편집 모달 ────────────────────────────────────────────────────────────
 function MemberEditModal({ member, onSave, onClose }: { member: Partial<Member>, onSave: (m: Partial<Member>) => Promise<void>, onClose: () => void }) {
   const [form, setForm] = useState<Partial<Member>>({ ...member })
   const [saving, setSaving] = useState(false)
@@ -258,7 +252,6 @@ function MemberEditModal({ member, onSave, onClose }: { member: Partial<Member>,
   )
 }
 
-// ── 앨범 페이지 ───────────────────────────────────────────────────────────────
 function AlbumPage({ albums, isAdmin, onSelect, onAdd }: { albums: Album[], isAdmin: boolean, onSelect: (a: Album) => void, onAdd: (cat: string) => void }) {
   const [fc, setFc] = useState('all')
   const displayCats = fc === 'all' ? ALBUM_CATS : [fc as typeof ALBUM_CATS[number]]
@@ -300,7 +293,6 @@ function AlbumPage({ albums, isAdmin, onSelect, onAdd }: { albums: Album[], isAd
   )
 }
 
-// ── 앨범 상세 ─────────────────────────────────────────────────────────────────
 function AlbumDetailPage({ album, isAdmin, onBack, onEdit, onLightbox, onDeletePhoto }: { album: Album, isAdmin: boolean, onBack: () => void, onEdit: () => void, onLightbox: (url: string) => void, onDeletePhoto: (id: number) => Promise<void> }) {
   return (
     <div style={{ paddingBottom: 100 }}>
@@ -326,7 +318,6 @@ function AlbumDetailPage({ album, isAdmin, onBack, onEdit, onLightbox, onDeleteP
   )
 }
 
-// ── 동기회행사 ────────────────────────────────────────────────────────────────
 function YearendPage({ albums, isAdmin, onSelect, onAdd }: { albums: Album[], isAdmin: boolean, onSelect: (a: Album) => void, onAdd: () => void }) {
   const ya = albums.filter(a => a.category === 'yearend').sort((a, b) => (b.year || 0) - (a.year || 0))
   return (
@@ -358,9 +349,10 @@ function YearendPage({ albums, isAdmin, onSelect, onAdd }: { albums: Album[], is
   )
 }
 
-
 // ── 교가 / 응원가 ─────────────────────────────────────────────────────────────
-function MusicPage() {
+// onPlayStart: 재생 시작 시 AppClient에 알림 (뒤로가기 히스토리 추가용)
+// onStop: AppClient가 외부에서 강제 정지시킬 때 사용
+function MusicPage({ onPlayStart, stopRef }: { onPlayStart: () => void, stopRef: React.MutableRefObject<(() => void) | null> }) {
   const [playing, setPlaying] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -369,10 +361,19 @@ function MusicPage() {
   const url = (file: string) => `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${file}`
 
   const TRACKS = [
-    { id: 'anthem_inst',   title: '교가 반주',   icon: '🎹', file: 'anthem_inst.mp3',  score: 'anthem_score.png' },
-    { id: 'anthem_choir',  title: '교가 합창',   icon: '🎶', file: 'anthem_choir.mp3', score: 'anthem_score.png' },
-    { id: 'cheer_inst',    title: '응원가 반주', icon: '📯', file: 'cheer_inst.mp3',   score: 'cheer_score.png' },
+    { id: 'anthem_inst',  title: '교가 반주',   icon: '🎹', file: 'anthem_inst.mp3',  score: 'anthem_score.png' },
+    { id: 'anthem_choir', title: '교가 합창',   icon: '🎶', file: 'anthem_choir.mp3', score: 'anthem_score.png' },
+    { id: 'cheer_inst',   title: '응원가 반주', icon: '📯', file: 'cheer_inst.mp3',   score: 'cheer_score.png' },
   ]
+
+  // AppClient가 호출할 수 있는 정지 함수를 stopRef에 등록
+  useEffect(() => {
+    stopRef.current = () => {
+      audioRef.current?.pause()
+      setPlaying(null)
+    }
+    return () => { stopRef.current = null }
+  }, [stopRef])
 
   const play = (id: string, file: string) => {
     if (playing === id) {
@@ -380,14 +381,14 @@ function MusicPage() {
       setPlaying(null)
       return
     }
-    if (audioRef.current) {
-      audioRef.current.pause()
-    }
+    if (audioRef.current) audioRef.current.pause()
     const audio = new Audio(url(file))
     audio.play()
     audio.onended = () => setPlaying(null)
     audioRef.current = audio
     setPlaying(id)
+    // 새로 재생 시작할 때마다 AppClient에 알려서 히스토리 추가
+    onPlayStart()
   }
 
   useEffect(() => {
@@ -400,8 +401,6 @@ function MusicPage() {
         <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-serif)' }}>🎵 교가 · 응원가</div>
       </div>
       <div style={{ padding: '20px 20px 0' }}>
-
-        {/* 음악 트랙 */}
         <div style={{ fontSize: 12, color: 'var(--gold)', letterSpacing: 1, marginBottom: 12 }}>🎵 음악</div>
         {TRACKS.map(t => (
           <div key={t.id} style={{ ...card, border: playing === t.id ? '1px solid var(--gold)' : '1px solid var(--navy-dim)', padding: 0, overflow: 'hidden' }}>
@@ -417,31 +416,22 @@ function MusicPage() {
                 </div>
               </div>
             </div>
-            {/* 악보 - 재생 중일 때만 표시 */}
             {playing === t.id && t.score && (
               <div style={{ borderTop: '1px solid var(--navy-dim)', padding: 12 }}>
                 <div style={{ fontSize: 11, color: 'var(--gold)', marginBottom: 8, letterSpacing: 1 }}>📄 악보</div>
-                <img src={url(t.score)} alt="악보"
-                  style={{ width: '100%', borderRadius: 8, display: 'block' }} />
+                <img src={url(t.score)} alt="악보" style={{ width: '100%', borderRadius: 8, display: 'block' }} />
               </div>
             )}
           </div>
         ))}
 
-        {/* 교가 영상 */}
         <div style={{ fontSize: 12, color: 'var(--gold)', letterSpacing: 1, marginTop: 20, marginBottom: 12 }}>🎬 교가 영상</div>
         <div style={{ ...card, padding: 0, overflow: 'hidden', borderRadius: 12 }}>
-          <video
-            controls
-            playsInline
-            style={{ width: '100%', display: 'block', borderRadius: 12 }}
-            src={url('anthem_video.mp4')}
-          >
+          <video controls playsInline style={{ width: '100%', display: 'block', borderRadius: 12 }} src={url('anthem_video.mp4')}>
             영상을 지원하지 않는 브라우저입니다.
           </video>
         </div>
 
-        {/* 응원가 가사 */}
         <div style={{ ...card, marginTop: 10 }}>
           <div style={{ fontSize: 12, color: 'var(--gold)', letterSpacing: 1, marginBottom: 12 }}>📜 응원가 가사</div>
           <div style={{ fontSize: 14, lineHeight: 2, color: 'var(--text)', whiteSpace: 'pre-line' }}>{`지축을 박차고 포효하거라
@@ -459,7 +449,6 @@ function MusicPage() {
 중앙 중앙 빅토리 야~~~!`}</div>
         </div>
 
-        {/* 교가 가사 */}
         <div style={{ ...card, marginTop: 10 }}>
           <div style={{ fontSize: 12, color: 'var(--gold)', letterSpacing: 1, marginBottom: 12 }}>📜 교가 가사</div>
           <div style={{ fontSize: 14, lineHeight: 2, color: 'var(--text)', whiteSpace: 'pre-line' }}>{`1절
@@ -486,13 +475,11 @@ function MusicPage() {
 가지가지 슬기를 열어느림은
 바다에가 그치는 저가람처럼`}</div>
         </div>
-
       </div>
     </div>
   )
 }
 
-// ── 앨범 편집 모달 ────────────────────────────────────────────────────────────
 function AlbumEditModal({ album, onSave, onClose }: { album: Partial<Album>, onSave: (f: Partial<Album>, photos: string[]) => Promise<void>, onClose: () => void }) {
   const [form, setForm] = useState<Partial<Album>>({ ...album })
   const [newPhotos, setNewPhotos] = useState<string[]>([])
@@ -569,7 +556,20 @@ export default function AppClient() {
   const [selAlbum, setSelAlbum] = useState<Album | null>(null)
   const [lightbox, setLightbox] = useState<string | null>(null)
 
-  // 라이트박스 열기 - 뒤로가기 지원
+  // 음악 페이지의 정지 함수를 보관하는 ref
+  const musicStopRef = useRef<(() => void) | null>(null)
+  // 음악이 현재 히스토리에 등록돼 있는지 추적
+  const musicHistoryRef = useRef(false)
+
+  // 음악 재생 시작 시 호출 - 중복 pushState 방지
+  const handleMusicPlayStart = useCallback(() => {
+    if (!musicHistoryRef.current) {
+      history.pushState({ music: true }, '')
+      musicHistoryRef.current = true
+    }
+  }, [])
+
+  // 라이트박스 열기
   const openLightbox = (url: string) => {
     history.pushState({ lightbox: true }, '')
     setLightbox(url)
@@ -578,13 +578,29 @@ export default function AppClient() {
     setLightbox(null)
   }
 
+  // 통합 popstate 핸들러
   useEffect(() => {
-    const onPop = () => {
-      if (lightbox) setLightbox(null)
+    const onPop = (e: PopStateEvent) => {
+      if (lightbox) {
+        // 라이트박스가 열려있으면 닫기
+        setLightbox(null)
+      } else if (musicHistoryRef.current) {
+        // 음악 재생 중이면 정지
+        musicStopRef.current?.()
+        musicHistoryRef.current = false
+      }
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [lightbox])
+
+  // 음악 페이지를 벗어날 때 재생 정지 + 히스토리 플래그 초기화
+  useEffect(() => {
+    if (page !== 'music') {
+      musicStopRef.current?.()
+      musicHistoryRef.current = false
+    }
+  }, [page])
 
   const [editMember, setEditMember] = useState<Partial<Member> | null>(null)
   const [editAlbum, setEditAlbum] = useState<Partial<Album> | null>(null)
@@ -680,7 +696,7 @@ export default function AppClient() {
       {page === 'album' && <AlbumPage albums={albums} isAdmin={isAdmin} onSelect={a => { setSelAlbum(a); setPage('albumDetail') }} onAdd={cat => setEditAlbum({ category: cat as any, title: '' })} />}
       {page === 'albumDetail' && selAlbum && <AlbumDetailPage album={selAlbum} isAdmin={isAdmin} onBack={() => nav(selAlbum.category === 'yearend' ? 'yearend' : 'album')} onEdit={() => setEditAlbum({ ...selAlbum })} onLightbox={openLightbox} onDeletePhoto={deletePhoto} />}
       {page === 'yearend' && <YearendPage albums={albums} isAdmin={isAdmin} onSelect={a => { setSelAlbum(a); setPage('albumDetail') }} onAdd={() => setEditAlbum({ category: 'yearend', title: '', year: new Date().getFullYear() })} />}
-      {page === 'music' && <MusicPage />}
+      {page === 'music' && <MusicPage onPlayStart={handleMusicPlayStart} stopRef={musicStopRef} />}
 
       {editMember && <MemberEditModal member={editMember} onSave={saveMember} onClose={() => setEditMember(null)} />}
       {editAlbum && <AlbumEditModal album={editAlbum} onSave={saveAlbum} onClose={() => setEditAlbum(null)} />}
