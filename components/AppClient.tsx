@@ -435,6 +435,23 @@ export default function AppClient() {
   const [selAlbum, setSelAlbum] = useState<Album | null>(null)
   const [lightbox, setLightbox] = useState<string | null>(null)
 
+  // 라이트박스 열기 - 뒤로가기 지원
+  const openLightbox = (url: string) => {
+    history.pushState({ lightbox: true }, '')
+    setLightbox(url)
+  }
+  const closeLightbox = () => {
+    setLightbox(null)
+  }
+
+  useEffect(() => {
+    const onPop = () => {
+      if (lightbox) setLightbox(null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [lightbox])
+
   const [editMember, setEditMember] = useState<Partial<Member> | null>(null)
   const [editAlbum, setEditAlbum] = useState<Partial<Album> | null>(null)
 
@@ -525,9 +542,9 @@ export default function AppClient() {
 
       {page === 'home' && <HomePage members={members} albums={albums} isAdmin={isAdmin} onNav={nav} onAdmin={() => requirePin('admin', '관리자 비밀번호', () => setIsAdmin(true))} onBackup={doBackup} />}
       {page === 'members' && <MembersPage members={members} onSelect={m => { setSelMember(m); setPage('memberDetail') }} />}
-      {page === 'memberDetail' && selMember && <MemberDetailPage m={selMember} isAdmin={isAdmin} onBack={() => nav('members')} onEdit={m => setEditMember({ ...m })} onLightbox={setLightbox} />}
+      {page === 'memberDetail' && selMember && <MemberDetailPage m={selMember} isAdmin={isAdmin} onBack={() => nav('members')} onEdit={m => setEditMember({ ...m })} onLightbox={openLightbox} />}
       {page === 'album' && <AlbumPage albums={albums} isAdmin={isAdmin} onSelect={a => { setSelAlbum(a); setPage('albumDetail') }} onAdd={cat => setEditAlbum({ category: cat as any, title: '' })} />}
-      {page === 'albumDetail' && selAlbum && <AlbumDetailPage album={selAlbum} isAdmin={isAdmin} onBack={() => nav(selAlbum.category === 'yearend' ? 'yearend' : 'album')} onEdit={() => setEditAlbum({ ...selAlbum })} onLightbox={setLightbox} onDeletePhoto={deletePhoto} />}
+      {page === 'albumDetail' && selAlbum && <AlbumDetailPage album={selAlbum} isAdmin={isAdmin} onBack={() => nav(selAlbum.category === 'yearend' ? 'yearend' : 'album')} onEdit={() => setEditAlbum({ ...selAlbum })} onLightbox={openLightbox} onDeletePhoto={deletePhoto} />}
       {page === 'yearend' && <YearendPage albums={albums} isAdmin={isAdmin} onSelect={a => { setSelAlbum(a); setPage('albumDetail') }} onAdd={() => setEditAlbum({ category: 'yearend', title: '', year: new Date().getFullYear() })} />}
 
       {editMember && <MemberEditModal member={editMember} onSave={saveMember} onClose={() => setEditMember(null)} />}
@@ -536,11 +553,11 @@ export default function AppClient() {
 
       {lightbox && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.97)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setLightbox(null)}>
+          onClick={() => closeLightbox()}>
           <img src={lightbox} alt="사진" draggable={false} onContextMenu={e => e.preventDefault()}
             style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain', display: 'block' }}
             onClick={e => e.stopPropagation()} />
-          <button onClick={e => { e.stopPropagation(); setLightbox(null) }}
+          <button onClick={e => { e.stopPropagation(); closeLightbox() }}
             style={{ position: 'fixed', top: 20, right: 20, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '50%', width: 44, height: 44, color: '#fff', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
       )}
