@@ -18,6 +18,43 @@ const ALBUM_CATS = ['basic', 'teacher', 'class1', 'class2', 'class3', 'class4', 
 
 const isVideo = (url: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url)
 
+// External link items (stored in 62-photos.url, not in Supabase storage)
+const youtubeId = (url: string): string | null => {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|live\/|embed\/))([A-Za-z0-9_-]{11})/)
+  return m ? m[1] : null
+}
+const isYouTube = (url: string) => !!youtubeId(url)
+const isGooglePhotos = (url: string) => /^https?:\/\/(photos\.app\.goo\.gl|photos\.google\.com|goo\.gl\/photos)\//i.test(url)
+const isLinkItem = (url: string) => isYouTube(url) || isGooglePhotos(url)
+const isPhoto = (url: string) => !isVideo(url) && !isLinkItem(url)
+const ytThumb = (id: string) => `https://img.youtube.com/vi/${id}/hqdefault.jpg`
+
+export type NewLink = { url: string, thumb_url?: string, caption?: string }
+
+// Shrink photos before upload (long side 1600px, JPEG). Falls back to the original file.
+async function shrinkImage(file: File, maxSide = 1600, quality = 0.82): Promise<File> {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') return file
+  try {
+    const bmp = await createImageBitmap(file)
+    const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bmp.width * scale); canvas.height = Math.round(bmp.height * scale)
+    canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height)
+    const blob: Blob | null = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality))
+    if (!blob || blob.size >= file.size) return file
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })
+  } catch { return file }
+}
+
+async function uploadAlbumFile(file: File): Promise<string | null> {
+  const f = await shrinkImage(file)
+  const ext = f.name.split('.').pop()
+  const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const { error } = await supabase.storage.from('album-photos').upload(fileName, f, { contentType: f.type || undefined })
+  if (error) return null
+  return supabase.storage.from('album-photos').getPublicUrl(fileName).data.publicUrl
+}
+
 function Splash({ onDone }: { onDone: () => void }) {
   const [fade, setFade] = useState(false)
   useEffect(() => { const t1 = setTimeout(() => setFade(true), 2700); const t2 = setTimeout(onDone, 3000); return () => { clearTimeout(t1); clearTimeout(t2) } }, [onDone])
@@ -282,7 +319,7 @@ function AlbumPage({ albums, isAdmin, onSelect, onAdd }: { albums: Album[], isAd
                     <div style={{ height: 100, background: 'var(--navy-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                       {a.cover_url ? <img src={a.cover_url} alt={a.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 32 }}>{CAT[cat].split(' ')[0]}</span>}
                     </div>
-                    <div style={{ padding: '10px 12px' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{a.title}</div><div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{(a.photos || []).length}장</div></div>
+                    <div style={{ padding: '10px 12px' }}><div style={{ fontSize: 13, fontWeight: 600 }}>{a.title}</div><div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{(a.photos || []).filter(p => !isLinkItem(p.url)).length}장{(a.photos || []).some(p => isLinkItem(p.url)) && <span style={{ marginLeft: 4 }}>· 🔗 {(a.photos || []).filter(p => isLinkItem(p.url)).length}</span>}</div></div>
                   </div>
                 ))}
                 {!ca.length && isAdmin && <div onClick={() => onAdd(cat)} style={{ ...card, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 80, border: '1px dashed var(--navy-dim)', color: 'var(--text-dim)', fontSize: 13 }}>+ 앨범 추가</div>}
@@ -297,8 +334,13 @@ function AlbumPage({ albums, isAdmin, onSelect, onAdd }: { albums: Album[], isAd
 
 function AlbumDetailPage({ album, isAdmin, onBack, onEdit, onLightbox, onDeletePhoto }: { album: Album, isAdmin: boolean, onBack: () => void, onEdit: () => void, onLightbox: (url: string) => void, onDeletePhoto: (id: number) => Promise<void> }) {
   const isYearend = album.category === 'yearend'
-  const photos = (album.photos || []).filter(p => !isVideo(p.url))
+  const photos = (album.photos || []).filter(p => isPhoto(p.url))
   const videos = (album.photos || []).filter(p => isVideo(p.url))
+  const links = (album.photos || []).filter(p => isLinkItem(p.url))
+  const delBtn = (id: number, what: string) => isAdmin && (
+    <button onClick={async e => { e.stopPropagation(); if (!confirm(`이 ${what}을(를) 삭제하시겠습니까?`)) return; await onDeletePhoto(id) }}
+      style={{ ...btn('red'), fontSize: 12, padding: '4px 12px' }}>🗑 삭제</button>
+  )
   return (
     <div style={{ paddingBottom: 100 }}>
       <div style={hdr}>
@@ -310,8 +352,46 @@ function AlbumDetailPage({ album, isAdmin, onBack, onEdit, onLightbox, onDeleteP
       <div style={{ padding: 16 }}>
         {isAdmin && (
           <button onClick={onEdit} style={{ ...btn('outline'), width: '100%', marginBottom: 12, fontSize: 12 }}>
-            {isYearend ? '📷 사진 / 🎬 동영상 추가' : '📷 사진 추가'}
+            {isYearend ? '📷 사진 / 🎬 동영상 / 🔗 링크 추가' : '📷 사진 / 🔗 링크 추가'}
           </button>
+        )}
+        {/* Google Photos albums and YouTube videos */}
+        {links.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+            {links.map(p => {
+              const yt = youtubeId(p.url)
+              if (yt) return (
+                <div key={p.id} style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 0 }}>
+                  <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                    <iframe src={`https://www.youtube-nocookie.com/embed/${yt}?rel=0&playsinline=1`} title={p.caption || '동영상'}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
+                  </div>
+                  {(p.caption || isAdmin) && (
+                    <div style={{ padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>🎬 {p.caption || ''}</div>
+                      {delBtn(p.id, '동영상')}
+                    </div>
+                  )}
+                </div>
+              )
+              const open = () => window.open(p.url, '_blank', 'noopener')
+              return (
+                <div key={p.id} style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 0, cursor: 'pointer' }} onClick={open}>
+                  {p.thumb_url
+                    ? <img src={p.thumb_url} alt={p.caption || ''} style={{ width: '100%', display: 'block', maxHeight: 360, objectFit: 'cover' }} />
+                    : <div style={{ height: 120, background: 'var(--navy-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📷</div>}
+                  <div style={{ padding: '12px' }}>
+                    {p.caption && <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>{p.caption}</div>}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ ...btn(), flex: 1, textAlign: 'center', padding: 12, fontSize: 14 }}>📷 전체 사진 보기 (구글 포토)</div>
+                      {delBtn(p.id, '링크')}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         )}
         {/* 사진 그리드 */}
         {photos.length > 0 && (
@@ -385,7 +465,9 @@ function YearendPage({ albums, isAdmin, onSelect, onAdd }: { albums: Album[], is
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{a.year}년 행사</div>
                 <div style={{ fontSize: 13, color: 'var(--gold)', marginTop: 2 }}>{a.title}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 4 }}>
-                  {(a.photos || []).filter(p => !isVideo(p.url)).length}장
+                  {(a.photos || []).filter(p => isPhoto(p.url)).length}장
+                  {(a.photos || []).some(p => isLinkItem(p.url)) &&
+                    <span style={{ marginLeft: 6 }}>· 🔗 {(a.photos || []).filter(p => isLinkItem(p.url)).length}</span>}
                   {(a.photos || []).filter(p => isVideo(p.url)).length > 0 &&
                     <span style={{ marginLeft: 6 }}>· 🎬 {(a.photos || []).filter(p => isVideo(p.url)).length}개</span>}
                 </div>
@@ -468,9 +550,13 @@ function MusicPage({ onPlayStart, stopRef }: { onPlayStart: () => void, stopRef:
   )
 }
 
-function AlbumEditModal({ album, onSave, onClose }: { album: Partial<Album>, onSave: (f: Partial<Album>, photos: string[]) => Promise<void>, onClose: () => void }) {
+function AlbumEditModal({ album, onSave, onClose }: { album: Partial<Album>, onSave: (f: Partial<Album>, photos: string[], links: NewLink[]) => Promise<void>, onClose: () => void }) {
   const [form, setForm] = useState<Partial<Album>>({ ...album })
   const [newPhotos, setNewPhotos] = useState<string[]>([])
+  const [newLinks, setNewLinks] = useState<NewLink[]>([])
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkCaption, setLinkCaption] = useState('')
+  const [linkThumb, setLinkThumb] = useState('')
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const isYearend = form.category === 'yearend'
@@ -479,14 +565,37 @@ function AlbumEditModal({ album, onSave, onClose }: { album: Partial<Album>, onS
     setUploading(true)
     const uploaded: string[] = []
     for (const file of Array.from(files)) {
-      const ext = file.name.split('.').pop()
-      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-      const { error } = await supabase.storage.from('album-photos').upload(fileName, file)
-      if (!error) { const { data } = supabase.storage.from('album-photos').getPublicUrl(fileName); uploaded.push(data.publicUrl) }
+      const u = await uploadAlbumFile(file)
+      if (u) uploaded.push(u)
     }
     setNewPhotos(p => [...p, ...uploaded]); setUploading(false)
   }
-  const save = async () => { if (!form.title) return; setSaving(true); try { await onSave(form, newPhotos) } finally { setSaving(false) } }
+  const handleThumb = async (files: FileList) => {
+    setUploading(true)
+    const u = await uploadAlbumFile(files[0])
+    if (u) setLinkThumb(u)
+    setUploading(false)
+  }
+  const trimmed = linkUrl.trim()
+  const linkKind = isYouTube(trimmed) ? 'youtube' : isGooglePhotos(trimmed) ? 'gphotos' : trimmed ? 'invalid' : ''
+  const addLink = () => {
+    if (linkKind === 'youtube') {
+      setNewLinks(p => [...p, { url: trimmed, thumb_url: ytThumb(youtubeId(trimmed)!), caption: linkCaption.trim() }])
+    } else if (linkKind === 'gphotos') {
+      if (!linkThumb && !confirm('대표 사진 없이 링크만 추가할까요?')) return
+      setNewLinks(p => [...p, { url: trimmed, thumb_url: linkThumb || undefined, caption: linkCaption.trim() }])
+    } else return
+    setLinkUrl(''); setLinkCaption(''); setLinkThumb('')
+  }
+  const save = async () => {
+    if (!form.title) return
+    if (trimmed && !confirm('입력 중인 링크가 아직 추가되지 않았습니다. 그래도 저장할까요?')) return
+    setSaving(true)
+    // Use the first link's cover photo as the album cover when the album has none
+    const firstThumb = newLinks.find(l => l.thumb_url)?.thumb_url
+    const f = !form.cover_url && firstThumb ? { ...form, cover_url: firstThumb } : form
+    try { await onSave(f, newPhotos, newLinks) } finally { setSaving(false) }
+  }
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 500, overflowY: 'auto' }}>
       <div style={{ background: 'var(--surface)', minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: 20 }}>
@@ -528,7 +637,42 @@ function AlbumEditModal({ album, onSave, onClose }: { album: Partial<Album>, onS
             </label>
           )}
         </div>
-        <button onClick={save} disabled={saving} style={{ ...btn(), width: '100%', padding: 14, fontSize: 16, opacity: saving ? 0.7 : 1 }}>{saving ? '저장 중...' : '저장'}</button>
+        <div style={{ ...fw, borderTop: '1px solid var(--navy-dim)', paddingTop: 14 }}>
+          <label style={lbl}>🔗 구글 포토 앨범 / 유튜브 링크 추가</label>
+          {newLinks.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+              {newLinks.map((l, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg)', borderRadius: 8, padding: 6 }}>
+                  {l.thumb_url
+                    ? <img src={l.thumb_url} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                    : <div style={{ width: 48, height: 48, borderRadius: 6, background: 'var(--navy-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📷</div>}
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 12 }}>
+                    <div style={{ fontWeight: 600 }}>{isYouTube(l.url) ? '🎬 유튜브' : '📷 구글 포토'} {l.caption}</div>
+                    <div style={{ color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.url}</div>
+                  </div>
+                  <button onClick={() => setNewLinks(p => p.filter((_, j) => j !== i))}
+                    style={{ background: '#c0392b', border: 'none', borderRadius: '50%', width: 22, height: 22, color: '#fff', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://photos.app.goo.gl/...  또는  https://youtu.be/..."
+            inputMode="url" autoCapitalize="off" autoCorrect="off" style={{ ...inp, marginBottom: 6 }} />
+          {linkKind === 'invalid' && <div style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 6 }}>구글 포토 공유 링크 또는 유튜브 링크만 넣을 수 있습니다</div>}
+          <input value={linkCaption} onChange={e => setLinkCaption(e.target.value)} placeholder="설명 (예: 2026 송년회 전체 사진)" style={{ ...inp, marginBottom: 6 }} />
+          {linkKind === 'gphotos' && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+              {linkThumb && <img src={linkThumb} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6 }} />}
+              <label style={{ ...btn('outline'), flex: 1, textAlign: 'center', padding: 10, cursor: 'pointer' }}>
+                {uploading ? '업로드 중...' : linkThumb ? '대표 사진 바꾸기' : '📷 대표 사진 선택'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.length) handleThumb(e.target.files) }} />
+              </label>
+            </div>
+          )}
+          <button onClick={addLink} disabled={uploading || (linkKind !== 'youtube' && linkKind !== 'gphotos')}
+            style={{ ...btn('outline'), width: '100%', padding: 10, opacity: linkKind === 'youtube' || linkKind === 'gphotos' ? 1 : 0.5 }}>+ 링크 추가</button>
+        </div>
+        <button onClick={save} disabled={saving || uploading} style={{ ...btn(), width: '100%', padding: 14, fontSize: 16, opacity: saving ? 0.7 : 1 }}>{saving ? '저장 중...' : '저장'}</button>
       </div>
     </div>
   )
@@ -595,15 +739,19 @@ export default function AppClient() {
     if (data) setSelMember(data)
     await loadMembers(); setEditMember(null)
   }
-  const saveAlbum = async (form: Partial<Album>, newPhotos: string[]) => {
+  const saveAlbum = async (form: Partial<Album>, newPhotos: string[], newLinks: NewLink[] = []) => {
     let albumId = form.id
     if (albumId) {
       await supabase.from('62-albums').update({ title: form.title, category: form.category, year: form.year, cover_url: form.cover_url }).eq('id', albumId)
     } else {
-      const { data } = await supabase.from('62-albums').insert({ title: form.title, category: form.category, year: form.year }).select().single()
+      const { data } = await supabase.from('62-albums').insert({ title: form.title, category: form.category, year: form.year, cover_url: form.cover_url }).select().single()
       albumId = data?.id
     }
     if (albumId && newPhotos.length) await supabase.from('62-photos').insert(newPhotos.map(url => ({ album_id: albumId, url })))
+    if (albumId && newLinks.length) {
+      const { error } = await supabase.from('62-photos').insert(newLinks.map(l => ({ album_id: albumId, url: l.url, thumb_url: l.thumb_url || null, caption: l.caption || null })))
+      if (error) alert('링크 저장 실패: ' + error.message)
+    }
     await loadAlbums(); setEditAlbum(null)
     if (albumId && selAlbum?.id === albumId) {
       const { data } = await supabase.from('62-albums').select('*, "62-photos"(*)').eq('id', albumId).single()

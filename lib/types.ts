@@ -29,6 +29,7 @@ export interface AlbumPhoto {
   id: number
   album_id: number
   url: string
+  thumb_url?: string
   caption?: string
   created_at?: string
 }
